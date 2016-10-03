@@ -39,11 +39,15 @@
         owner=root
         group={{ sftp_group_name }}
         mode="0750"
+
   with_items: "{{ sftp_users }}"
 
 # Install all relevant public keys.
 - name: SFTP-Server | Install public keys
-  authorized_key: user={{ item.0.name }} key='{{ lookup('file', item.1) }}'
+  authorized_key: user={{ item.0.name }}
+                  key='{{ lookup('file', item.1) }}'
+                  manage_dir=no
+                  path='/etc/ssh/authorized_keys/{{ item.0.name }}'
   with_subelements:
     - "{{ sftp_users }}"
     - authorized
