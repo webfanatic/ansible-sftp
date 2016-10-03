@@ -31,6 +31,7 @@
         groups={{ sftp_group_name }}
         home="{{ sftp_home_partition }}/{{ item.name }}"
         state=present
+        createhome=no
   with_items: "{{ sftp_users }}"
 
 # A working chrooted SFTP setup requires root:sftgroup ownership of a user's home directory.
@@ -39,6 +40,7 @@
         owner=root
         group={{ sftp_group_name }}
         mode="0750"
+        state=directory
 
   with_items: "{{ sftp_users }}"
 
@@ -59,7 +61,7 @@
   with_items: "{{ sftp_users }}"
   when: item.password is defined
 
-# Create directories for SFTP users. Optional, but recommended.
+# Create common directories for SFTP users. Optional, but recommended.
 - name: SFTP-Server | Create directories
   file: path="{{ sftp_home_partition }}/{{ item[0].name }}/{{ item[1].name | default(item[1]) }}"
         owner={{ item[0].name }}
@@ -69,3 +71,24 @@
   with_nested:
     - "{{ sftp_users }}"
     - "{{ sftp_directories }}"
+
+############################################
+# Mount directories from other accounts
+# Assume that the other account already exists
+# Assume that the dest directory defined in sftp_directories
+- name: SFTP-Server | Mount other directories
+  mount:  name="{{ sftp_home_partition }}/{{ item[0].name }}/{{ item[1].dest }}"
+          src="{{ sftp_home_partition }}/{{ item[1].src }}"
+          opts=bind
+          fstype=none
+          state=present
+  register: fstab
+  with_nested:
+    - "{{ sftp_users }}"
+    - "{{ mount_directories }}"
+  when: mount_directories is defined
+
+- name: Reload fstab
+  command: mount -a
+  when: mount_directories is defined
+#  when: fstab.changed
