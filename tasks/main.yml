@@ -85,7 +85,7 @@
   register: fstab
   with_nested:
     - "{{ sftp_users }}"
-    - "{{ mount_directories }}"
+    - "{{ mount_directories | default({}) }}"
   when: mount_directories is defined
 
 - name: Reload fstab
