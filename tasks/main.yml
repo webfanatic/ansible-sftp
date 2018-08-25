@@ -76,6 +76,14 @@
 # Mount directories from other accounts
 # Assume that the other account already exists
 # Assume that the dest directory defined in sftp_directories
+- name: Create dest folder for our mount
+  file: path="{{ sftp_home_partition }}/{{ item[0].name }}/{{ item[1].dest }}"
+        state=directory
+  with_nested:
+    - "{{ sftp_users }}"
+    - "{{ mount_directories | default({}) }}"
+  when: mount_directories is defined
+
 - name: SFTP-Server | Mount other directories
   mount:  name="{{ sftp_home_partition }}/{{ item[0].name }}/{{ item[1].dest }}"
           src="{{ sftp_home_partition }}/{{ item[1].src }}"
@@ -92,3 +100,13 @@
   command: mount -a
   when: mount_directories is defined
 #  when: fstab.changed
+
+# Accessing someone else's folder is tricky in SFTP. Add ourselves to the group
+- name: Adding existing user "{{ item[0].name }}" to group "{{ item[1].dest }}"
+  user: name="{{ item[0].name }}"
+        groups="{{item[1].dest}}"
+        append=yes
+  with_nested:
+    - "{{ sftp_users }}"
+    - "{{ mount_directories | default({}) }}"
+  when: mount_directories is defined
